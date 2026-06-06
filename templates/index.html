@@ -34,10 +34,28 @@
             text-shadow: 0 0 15px var(--neon-blue);
         }
 
+        /* Layout em Grid para acomodar o screenshot se houver dados */
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        @media(min-width: 900px) {
+            .main-layout.has-results {
+                display: grid;
+                grid-template-columns: 1fr 380px;
+                align-items: start;
+            }
+        }
+
         .container { 
-            width: 100%; max-width: 650px; background: rgba(16, 38, 64, 0.9); 
+            width: 100%; background: rgba(16, 38, 64, 0.9); 
             padding: 30px; border-radius: 4px; border: 1px solid rgba(84, 127, 179, 0.3);
             box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            box-sizing: border-box;
         }
 
         .terminal-box {
@@ -55,24 +73,72 @@
 
         .btn-verificar { 
             padding: 0 25px; background: var(--neon-blue); color: white; 
-            border: none; cursor: pointer; font-weight: bold;
+            border: none; cursor: pointer; font-weight: bold; font-family: 'Share Tech Mono';
         }
 
         /* ESTILO DOS RESULTADOS */
         .result-panel {
-            margin-bottom: 25px; padding: 20px; border-left: 4px solid var(--neon-blue);
+            margin-bottom: 25px; padding: 20px;
             background: rgba(0,0,0,0.3);
         }
-        .reason-list { list-style: none; padding: 0; font-size: 14px; color: #ced4da; }
-        .reason-list li { margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); pb-5; }
+        .reason-list { list-style: none; padding: 0; font-size: 13px; color: #ced4da; }
+        .reason-list li { margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+
+        /* Módulos internos do painel de resultados */
+        .intel-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #1a3a5a;
+        }
+        .intel-title {
+            font-family: 'Share Tech Mono';
+            font-size: 12px;
+            color: var(--neon-blue);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        /* Grid do VirusTotal */
+        .vt-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            font-family: 'Share Tech Mono';
+            text-align: center;
+            margin-top: 5px;
+        }
+        .vt-card { padding: 6px; background: #000; border: 1px solid #1a3a5a; border-radius: 2px; }
+        .vt-label { block; font-size: 9px; color: #666; }
+        .vt-value { block; font-size: 14px; font-weight: bold; }
 
         .btn-secondary { 
             display: flex; align-items: center; justify-content: center; gap: 10px; 
-            width: 100%; padding: 12px; text-decoration: none; font-weight: bold; font-size: 12px; 
+            padding: 12px; text-decoration: none; font-weight: bold; font-size: 12px; 
             margin-bottom: 10px; text-transform: uppercase; border-radius: 4px;
+            box-sizing: border-box;
         }
         .btn-leak { color: var(--neon-red); border: 1px solid var(--neon-red); }
         .btn-bitwarden { color: var(--neon-blue); border: 1px solid var(--neon-blue); }
+
+        /* Container do Screenshot Lateral */
+        .screenshot-container {
+            background: rgba(16, 38, 64, 0.9);
+            border: 1px solid rgba(84, 127, 179, 0.3);
+            padding: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .screenshot-frame {
+            background: #000;
+            border: 1px solid #1a3a5a;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+        }
+        .screenshot-frame img {
+            width: 100%;
+            height: 100%;
+            object-cover: cover;
+            filter: brightness(0.8) contrast(1.1);
+        }
 
         .maps-wrapper { display: flex; flex-wrap: wrap; gap: 20px; width: 100%; max-width: 1200px; margin-top: 40px; justify-content: center; }
         .map-container { flex: 1; min-width: 350px; height: 350px; background: #000; border: 1px solid #1a3a5a; }
@@ -85,49 +151,108 @@
         <h1>STRIPED OWL SECURITY</h1>
     </div>
 
-    <div class="container">
-        <div class="terminal-box">
-            <div>> SYSTEM STATUS: ONLINE</div>
-            <div>> INTEL_UNIT_ACTIVE...</div>
+    <div class="main-layout {% if data %}has-results{% endif %}">
+        
+        <div class="container">
+            <div class="terminal-box">
+                <div>> SYSTEM STATUS: ONLINE</div>
+                <div>> INTEL_UNIT_ACTIVE...</div>
+                {% if data %}
+                <div>> TARGET RESOLVED: {{ data.domain }}</div>
+                <div>> RISK SCORE FACTOR: {{ data.risk_score }}/100</div>
+                {% endif %}
+            </div>
+
+            <form method="POST">
+                <div class="input-group">
+                    <input type="text" name="url" placeholder="DIGITE A URL ALVO..." value="{% if data %}{{ data.target_url }}{% endif %}" required>
+                    <button type="submit" class="btn-verificar">VERIFICAR</button>
+                </div>
+            </form>
+
+            {% if data %}
+            <div class="result-panel" style="border-left: 4px solid {% if data.reasons or (data.vt and data.vt.malicious > 0) %}var(--neon-red){% else %}var(--terminal-green){% endif %};">
+                <h3 style="margin-top:0; font-family: 'Share Tech Mono'; color: {% if data.reasons or (data.vt and data.vt.malicious > 0) %}var(--neon-red){% else %}var(--terminal-green){% endif %};">
+                    {% if data.reasons or (data.vt and data.vt.malicious > 0) %}
+                        🚨 RISCOS DETECTADOS (SCORE: {{ data.risk_score }}/100)
+                    {% else %}
+                        ✅ URL PARECE SEGURA (SCORE: 0/100)
+                    {% endif %}
+                </h3>
+                
+                {% if data.reasons %}
+                <ul class="reason-list">
+                    {% for reason in data.reasons %}
+                        <li><i class="fa-solid fa-angle-right text-slate-500 mr-1"></i> {{ reason | safe }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="font-size: 13px; color: #ced4da;">Nenhum indicador de fraude ou comportamento malicioso foi acionado na estrutura desta URL.</p>
+                {% endif %}
+
+                <div class="intel-section">
+                    <div class="intel-title">> VIRUSTOTAL ANALYSIS REPORT</div>
+                    {% if data.vt and data.vt != "Erro" and data.vt != "Não analisado" %}
+                        <div class="vt-grid">
+                            <div class="vt-card" style="border-color: rgba(255,77,77,0.4)">
+                                <span class="vt-label">MALICIOUS</span>
+                                <span class="vt-value" style="color: var(--neon-red);">{{ data.vt.malicious }}</span>
+                            </div>
+                            <div class="vt-card" style="border-color: rgba(234,179,8,0.4)">
+                                <span class="vt-label">SUSPICIOUS</span>
+                                <span class="vt-value" style="color: #eab308;">{{ data.vt.suspicious }}</span>
+                            </div>
+                            <div class="vt-card">
+                                <span class="vt-label">CLEAN</span>
+                                <span class="vt-value" style="color: var(--terminal-green);">{{ data.vt.harmless }}</span>
+                            </div>
+                            <div class="vt-card">
+                                <span class="vt-label">UNKNOWN</span>
+                                <span class="vt-value" style="color: #888;">{{ data.vt.undetected }}</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div style="font-family: 'Share Tech Mono'; font-size: 11px; color: #666;">[NENHUM REGISTRO PRÉVIO ENCONTRADO NA API GLOBAL]</div>
+                    {% endif %}
+                </div>
+
+                {% if data.whois %}
+                <div class="intel-section">
+                    <div class="intel-title">> WHOIS INTEL DATA</div>
+                    <div style="font-family: 'Share Tech Mono'; font-size: 11px; color: #aaa; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                        <div>REGISTRADOR: <span style="color:#fff;">{{ data.whois.registrar }}</span></div>
+                        <div>LOCALIDADE: <span style="color:#fff;">{{ data.whois.country }}</span></div>
+                        <div>REGISTRO: <span style="color:#fff;">{{ data.whois.creation_date }}</span></div>
+                        <div>EXPIRAÇÃO: <span style="color:#fff;">{{ data.whois.expiration_date }}</span></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <a href="https://haveibeenpwned.com/" target="_blank" class="btn-secondary btn-leak">
+                <i class="fas fa-user-secret"></i> CONSULTA SENHA VAZADA DARK WEB
+            </a>
+            <a href="https://bitwarden.com/password-generator/" target="_blank" class="btn-secondary btn-bitwarden">
+                <i class="fas fa-key"></i> GERADOR DE SENHAS BITWARDEN
+            </a>
         </div>
 
-        <form method="POST">
-            <div class="input-group">
-                <input type="text" name="url" placeholder="DIGITE A URL ALVO..." value="{{ url_digitada }}" required>
-                <button type="submit" class="btn-verificar">VERIFICAR</button>
+        {% if data %}
+        <div class="screenshot-container">
+            <div class="map-header" style="margin-bottom: 10px; border-bottom: 1px solid #1a3a5a; padding-bottom: 5px;">
+                <i class="fa-solid fa-desktop"></i> REMOTE VISUAL SCREENSHOT
             </div>
-        </form>
-
-        {% if result %}
-        <div class="result-panel" style="border-color: {{ 'var(--neon-red)' if reasons else 'var(--terminal-green)' }};">
-            <h3 style="margin-top:0; color: {{ 'var(--neon-red)' if reasons else 'var(--terminal-green)' }};">
-                {{ result }}
-            </h3>
-            
-            {% if reasons %}
-            <ul class="reason-list">
-                {% for reason in reasons %}
-                    <li>{{ reason | safe }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-
-            {% if whois_info %}
-            <div style="font-family: 'Share Tech Mono'; font-size: 11px; color: #888; border-top: 1px solid #222; padding-top: 10px;">
-                <div>> REGISTRADOR: {{ whois_info.registrar }}</div>
-                <div>> DATA CRIAÇÃO: {{ whois_info.creation_date }}</div>
-                <div>> LOCAL: {{ whois_info.country }}</div>
+            <div class="screenshot-frame">
+                <img src="{{ data.screenshot }}" alt="Navegação Visual Automatizada"
+                     onerror="this.onerror=null; this.src='https://placehold.co/600x400/000000/00ff41?text=Aguardando+Renderizacao...';">
             </div>
-            {% endif %}
+            <div style="font-family: 'Share Tech Mono'; font-size: 10px; color: #557db2; margin-top: 8px; text-align: center;">
+                [IMAGEM COLETADA VIA SERVIDOR HEADLESS SEGURO]
+            </div>
         </div>
         {% endif %}
 
-        <a href="https://haveibeenpwned.com/" target="_blank" class="btn-secondary btn-leak">
-            <i class="fas fa-user-secret"></i> CONSULTA SENHA VAZADA DARK WEB
-        </a>
-        <a href="https://bitwarden.com/password-generator/" target="_blank" class="btn-secondary btn-bitwarden">
-            <i class="fas fa-key"></i> GERADOR DE SENHAS BITWARDEN
-        </a>
     </div>
 
     <div class="maps-wrapper">
